@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import "./LandingHub.css";
 import Cursor from "./Cursor";
 import ContactForm from "./ContactForm";
-import { useReveal, Scramble, ScrollProgress, NeuralField, Tilt } from "./Effects";
+import { useReveal, useInteractions, Scramble, ScrollProgress, NeuralField, Tilt, Marquee } from "./Effects";
 
 /* ---------- contenido editable ---------- */
 
@@ -92,7 +92,7 @@ function Nav() {
           {navLinks.map((l) => <a key={l.href} href={l.href}>{l.label}</a>)}
         </div>
         <div className="hb-nav-right">
-          <a className="hb-btn hb-btn-sm" href="#contacto">Agendar llamada</a>
+          <a className="hb-btn hb-btn-sm hb-magnet" href="#contacto">Agendar llamada</a>
           <button
             className="hb-menu"
             aria-label={open ? "Cerrar menú" : "Abrir menú"}
@@ -118,15 +118,13 @@ function LiveConsole() {
   const [count, setCount] = useState(4);
 
   useEffect(() => {
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduce) return;
     const t = setInterval(() => {
       setCount((c) => {
         const next = feed[c % feed.length];
         setItems((prev) => [{ ...next, id: c }, ...prev].slice(0, 4));
         return c + 1;
       });
-    }, 2400);
+    }, 1500);
     return () => clearInterval(t);
   }, []);
 
@@ -140,7 +138,7 @@ function LiveConsole() {
       </div>
       <div className="hb-agents">
         {agents.map((a) => (
-          <div key={a.name} className={`hb-agent ${a.tone}`}>
+          <div key={a.name} className={`hb-agent hb-spot ${a.tone}`}>
             <i />
             <span>{a.name}</span>
             <small className="hb-mono">activo</small>
@@ -203,6 +201,7 @@ const heroWords = [
 
 export default function LandingHub() {
   useReveal();
+  useInteractions();
   return (
     <div className="hb" id="top">
       <Cursor />
@@ -210,6 +209,9 @@ export default function LandingHub() {
       <div className="hb-bg" aria-hidden="true">
         <div className="hb-glow hb-glow-a" />
         <div className="hb-glow hb-glow-b" />
+        <div className="hb-aurora hb-aurora-1" />
+        <div className="hb-aurora hb-aurora-2" />
+        <div className="hb-aurora hb-aurora-3" />
         <div className="hb-grid" />
         <NeuralField />
       </div>
@@ -219,9 +221,9 @@ export default function LandingHub() {
       {/* HERO */}
       <header className="hb-hero">
         <div className="hb-wrap hb-hero-grid">
-          <div>
+          <div className="hb-par-a">
             <span className="hb-pill hb-intro" style={{ "--d": "0ms" }}><i /> Hecho a la medida de tu operación</span>
-            <h1 className="hb-h1">
+            <h1 className="hb-h1 hb-glitch">
               {heroWords.map((w, i) => (
                 <span className="hb-word" key={i} style={{ "--d": `${120 + i * 70}ms` }}>
                   {w.em ? <em className="hb-shine">{w.t}</em> : w.t}&nbsp;
@@ -234,16 +236,21 @@ export default function LandingHub() {
               cuando hace falta.
             </p>
             <div className="hb-actions hb-intro" style={{ "--d": "880ms" }}>
-              <a className="hb-btn" href="#contacto">Hablar con un consultor</a>
+              <a className="hb-btn hb-magnet" href="#contacto">Hablar con un consultor</a>
               <a className="hb-btn-ghost" href="#ecosistema">Ver cómo funciona →</a>
             </div>
           </div>
-          <div className="hb-intro" style={{ "--d": "400ms" }}><LiveConsole /></div>
+          <div className="hb-par-b"><div className="hb-intro" style={{ "--d": "400ms" }}><LiveConsole /></div></div>
         </div>
         <a href="#ecosistema" className="hb-scroll-hint hb-mono" aria-label="Bajar">
           <span>SCROLL</span><i />
         </a>
       </header>
+
+      <div className="hb-marquees">
+        <Marquee items={["Agentes de IA", "Automatización", "Consultoría", "Contact center", "WhatsApp", "Voz", "CRM"]} />
+        <Marquee reverse outline items={["Del agente al cable", "Operación 24/7", "Hecho a tu medida", "LATAM"]} />
+      </div>
 
       {/* ECOSISTEMA */}
       <section className="hb-section hb-eco" id="ecosistema">
@@ -270,7 +277,7 @@ export default function LandingHub() {
           <h2 className="hb-h2-wide" data-reveal>Consultoría que <em>no se queda en el papel.</em></h2>
           <div className="hb-steps" data-reveal>
             {steps.map((s, i) => (
-              <div className="hb-step" key={s.n} style={{ "--d": `${200 + i * 180}ms` }}>
+              <div className="hb-step hb-spot" key={s.n} style={{ "--d": `${200 + i * 180}ms` }}>
                 <span className="hb-step-n hb-mono">{s.n}</span>
                 <h3>{s.title}</h3>
                 <p>{s.text}</p>
@@ -296,7 +303,7 @@ export default function LandingHub() {
           </div>
           <div className="hb-layers" data-reveal>
             {layers.map((l, i) => (
-              <div className={`hb-layer ${l.tone}`} key={l.k} style={{ "--d": `${i * 160}ms` }}>
+              <div className={`hb-layer hb-spot ${l.tone}`} key={l.k} style={{ "--d": `${i * 160}ms` }}>
                 <div className="hb-layer-top">
                   <span className="hb-mono">{l.k}</span>
                   {l.by && <span className="hb-by hb-mono">{l.by}</span>}
@@ -314,7 +321,7 @@ export default function LandingHub() {
         <div className="hb-wrap">
           <div className="hb-princ-grid" data-reveal>
             {principles.map((p, i) => (
-              <div key={p.title} className="hb-princ" style={{ "--d": `${i * 140}ms` }}>
+              <div key={p.title} className="hb-princ hb-spot" style={{ "--d": `${i * 140}ms` }}>
                 <h3>{p.title}</h3>
                 <p>{p.text}</p>
               </div>

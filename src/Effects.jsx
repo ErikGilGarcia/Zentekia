@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 
-const reduceMotion = () =>
-  typeof window !== "undefined" &&
-  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+// La página siempre anima (el usuario lo pidió así), aunque Windows
+// tenga "reducir movimiento" activado.
+const reduceMotion = () => false;
+const hasMouse = () =>
+  window.matchMedia("(any-pointer: fine)").matches || window.matchMedia("(hover: hover)").matches;
 
 /* ---------- Aparece al hacer scroll ---------- */
 export function useReveal() {
@@ -95,15 +97,14 @@ export function ScrollProgress() {
   return <div ref={ref} className="hb-progress" aria-hidden="true" />;
 }
 
-/* ---------- Red de partículas que reacciona al mouse ---------- */
+/* ---------- Red de partículas: reacciona al mouse, explota al hacer clic ---------- */
 export function NeuralField() {
   const ref = useRef(null);
 
   useEffect(() => {
     const canvas = ref.current;
     const ctx = canvas.getContext("2d");
-    const reduce = reduceMotion();
-    let w, h, dpr, pts = [], raf;
+    let w, h, dpr, pts = [], waves = [], raf, t = 0;
     const mouse = { x: -9999, y: -9999 };
 
     const init = () => {
@@ -115,40 +116,73 @@ export function NeuralField() {
       canvas.style.width = w + "px";
       canvas.style.height = h + "px";
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const count = Math.min(90, Math.floor((w * h) / 16000));
+      const count = Math.min(150, Math.floor((w * h) / 9000));
       pts = Array.from({ length: count }, () => ({
         x: Math.random() * w,
         y: Math.random() * h,
-        vx: (Math.random() - 0.5) * 0.25,
-        vy: (Math.random() - 0.5) * 0.25,
-        r: Math.random() * 1.4 + 0.6,
+        vx: (Math.random() - 0.5) * 0.6,
+        vy: (Math.random() - 0.5) * 0.6,
+        r: Math.random() * 1.8 + 0.6,
+        hue: Math.random() < 0.25 ? 190 : 218, // algunos cian, la mayoría azules
       }));
     };
 
     const draw = () => {
+      t += 0.016;
       ctx.clearRect(0, 0, w, h);
+
+      // ondas de choque del clic
+      waves = waves.filter((wv) => wv.r < 520);
+      for (const wv of waves) {
+        wv.r += 9;
+        const a = 1 - wv.r / 520;
+        ctx.strokeStyle = `rgba(110,168,255,${a * 0.7})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(wv.x, wv.y, wv.r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeStyle = `rgba(80,220,255,${a * 0.35})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(wv.x, wv.y, wv.r * 0.7, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
       for (const p of pts) {
-        if (!reduce) {
-          p.x += p.vx;
-          p.y += p.vy;
-          if (p.x < 0 || p.x > w) p.vx *= -1;
-          if (p.y < 0 || p.y > h) p.vy *= -1;
-          // leve atracción hacia el mouse
-          const dx = mouse.x - p.x, dy = mouse.y - p.y;
-          const d = Math.hypot(dx, dy);
-          if (d < 180) {
-            p.x += dx * 0.004;
-            p.y += dy * 0.004;
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vx *= 0.99; p.vy *= 0.99;
+        // velocidad mínima para que nunca se queden quietas
+        const sp = Math.hypot(p.vx, p.vy);
+        if (sp < 0.25) { p.vx += (Math.random() - 0.5) * 0.08; p.vy += (Math.random() - 0.5) * 0.08; }
+        if (p.x < 0) { p.x = 0; p.vx *= -1; } if (p.x > w) { p.x = w; p.vx *= -1; }
+        if (p.y < 0) { p.y = 0; p.vy *= -1; } if (p.y > h) { p.y = h; p.vy *= -1; }
+        // el mouse las atrae en órbita
+        const dx = mouse.x - p.x, dy = mouse.y - p.y;
+        const d = Math.hypot(dx, dy);
+        if (d < 220 && d > 1) {
+          p.vx += (dx / d) * 0.05 - (dy / d) * 0.04;
+          p.vy += (dy / d) * 0.05 + (dx / d) * 0.04;
+        }
+        // la onda las empuja
+        for (const wv of waves) {
+          const wd = Math.hypot(p.x - wv.x, p.y - wv.y);
+          if (Math.abs(wd - wv.r) < 30 && wd > 1) {
+            p.vx += ((p.x - wv.x) / wd) * 1.4;
+            p.vy += ((p.y - wv.y) / wd) * 1.4;
           }
         }
       }
+
       for (let i = 0; i < pts.length; i++) {
         const a = pts[i];
         for (let j = i + 1; j < pts.length; j++) {
           const b = pts[j];
-          const d = Math.hypot(a.x - b.x, a.y - b.y);
-          if (d < 130) {
-            ctx.strokeStyle = `rgba(110,168,255,${(1 - d / 130) * 0.16})`;
+          const dx = a.x - b.x, dy = a.y - b.y;
+          if (Math.abs(dx) > 140 || Math.abs(dy) > 140) continue;
+          const d = Math.hypot(dx, dy);
+          if (d < 140) {
+            ctx.strokeStyle = `rgba(110,168,255,${(1 - d / 140) * 0.28})`;
             ctx.lineWidth = 1;
             ctx.beginPath();
             ctx.moveTo(a.x, a.y);
@@ -157,39 +191,100 @@ export function NeuralField() {
           }
         }
         const md = Math.hypot(a.x - mouse.x, a.y - mouse.y);
-        if (md < 180) {
-          ctx.strokeStyle = `rgba(110,168,255,${(1 - md / 180) * 0.45})`;
+        if (md < 220) {
+          ctx.strokeStyle = `rgba(120,200,255,${(1 - md / 220) * 0.7})`;
           ctx.beginPath();
           ctx.moveTo(a.x, a.y);
           ctx.lineTo(mouse.x, mouse.y);
           ctx.stroke();
         }
-        ctx.fillStyle = md < 180 ? "rgba(160,200,255,0.95)" : "rgba(110,168,255,0.55)";
+        const tw = 0.6 + Math.sin(t * 3 + i) * 0.4; // parpadeo
+        ctx.fillStyle = md < 220 ? `hsla(${a.hue},100%,80%,1)` : `hsla(${a.hue},100%,70%,${0.45 + tw * 0.4})`;
+        ctx.shadowColor = `hsla(${a.hue},100%,65%,1)`;
+        ctx.shadowBlur = md < 220 ? 12 : 6;
         ctx.beginPath();
-        ctx.arc(a.x, a.y, a.r, 0, Math.PI * 2);
+        ctx.arc(a.x, a.y, a.r * (md < 220 ? 1.6 : 1), 0, Math.PI * 2);
         ctx.fill();
+        ctx.shadowBlur = 0;
       }
-      if (!reduce) raf = requestAnimationFrame(draw);
+      raf = requestAnimationFrame(draw);
     };
 
     const onMove = (e) => { mouse.x = e.clientX; mouse.y = e.clientY; };
     const onLeave = () => { mouse.x = -9999; mouse.y = -9999; };
-    const onResize = () => { init(); if (reduce) draw(); };
+    const onClick = (e) => { waves.push({ x: e.clientX, y: e.clientY, r: 0 }); };
 
     init();
     draw();
     window.addEventListener("mousemove", onMove);
+    window.addEventListener("mousedown", onClick);
     document.addEventListener("mouseleave", onLeave);
-    window.addEventListener("resize", onResize);
+    window.addEventListener("resize", init);
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mousedown", onClick);
       document.removeEventListener("mouseleave", onLeave);
-      window.removeEventListener("resize", onResize);
+      window.removeEventListener("resize", init);
     };
   }, []);
 
   return <canvas ref={ref} className="hb-neural" aria-hidden="true" />;
+}
+
+/* ---------- Botones magnéticos + brillo que sigue al mouse en tarjetas + parallax ---------- */
+export function useInteractions() {
+  useEffect(() => {
+    const root = document.documentElement;
+
+    const onScroll = () => root.style.setProperty("--sy", String(window.scrollY));
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+
+    if (!hasMouse()) return () => window.removeEventListener("scroll", onScroll);
+
+    const onMove = (e) => {
+      // brillo tipo linterna en tarjetas
+      const card = e.target.closest?.(".hb-spot");
+      if (card) {
+        const r = card.getBoundingClientRect();
+        card.style.setProperty("--sx", `${e.clientX - r.left}px`);
+        card.style.setProperty("--sy2", `${e.clientY - r.top}px`);
+      }
+      // botones magnéticos
+      document.querySelectorAll(".hb-magnet").forEach((el) => {
+        const r = el.getBoundingClientRect();
+        const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+        const dx = e.clientX - cx, dy = e.clientY - cy;
+        const d = Math.hypot(dx, dy);
+        if (d < 120) el.style.transform = `translate(${dx * 0.3}px, ${dy * 0.4}px)`;
+        else if (el.style.transform) el.style.transform = "";
+      });
+      // el hero se mueve con el mouse (profundidad)
+      const nx = e.clientX / window.innerWidth - 0.5, ny = e.clientY / window.innerHeight - 0.5;
+      root.style.setProperty("--px", nx.toFixed(3));
+      root.style.setProperty("--py", ny.toFixed(3));
+    };
+    window.addEventListener("mousemove", onMove);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("mousemove", onMove);
+    };
+  }, []);
+}
+
+/* ---------- Cinta infinita de texto ---------- */
+export function Marquee({ items, reverse = false, outline = false }) {
+  const row = [...items, ...items];
+  return (
+    <div className={`hb-marquee ${reverse ? "rev" : ""} ${outline ? "outline" : ""}`} aria-hidden="true">
+      <div className="hb-marquee-track">
+        {row.map((t, i) => (
+          <span key={i}>{t}<i>✦</i></span>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 /* ---------- Inclinación 3D siguiendo el mouse ---------- */
@@ -197,7 +292,7 @@ export function Tilt({ children, className = "", max = 6 }) {
   const ref = useRef(null);
   useEffect(() => {
     const el = ref.current;
-    if (reduceMotion() || !window.matchMedia("(pointer: fine)").matches) return;
+    if (!hasMouse()) return;
     const move = (e) => {
       const r = el.getBoundingClientRect();
       const x = (e.clientX - r.left) / r.width - 0.5;

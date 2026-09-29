@@ -134,7 +134,7 @@ export default function ContactForm() {
 
       <div className="hb-form-foot">
         <span className="hb-form-note">O escríbenos directo a <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a></span>
-        <button type="submit" className="hb-btn" disabled={status === "sending"}>
+        <button type="submit" className="hb-btn hb-magnet" disabled={status === "sending"}>
           {status === "sending" ? "Enviando…" : "Enviar solicitud →"}
         </button>
       </div>
