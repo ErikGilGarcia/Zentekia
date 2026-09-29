@@ -114,19 +114,19 @@ function Nav() {
 }
 
 function LiveConsole() {
-  const [items, setItems] = useState(feed.slice(0, 4).map((f, i) => ({ ...f, id: i })));
+  // Un solo estado: el contador. Las 4 filas visibles se calculan a partir
+  // de él, así nunca pueden acumularse ni duplicarse.
   const [count, setCount] = useState(4);
 
   useEffect(() => {
-    const t = setInterval(() => {
-      setCount((c) => {
-        const next = feed[c % feed.length];
-        setItems((prev) => [{ ...next, id: c }, ...prev].slice(0, 4));
-        return c + 1;
-      });
-    }, 1500);
+    const t = setInterval(() => setCount((c) => c + 1), 1500);
     return () => clearInterval(t);
   }, []);
+
+  const items = [0, 1, 2, 3].map((k) => {
+    const id = count - 1 - k;
+    return { ...feed[((id % feed.length) + feed.length) % feed.length], id };
+  });
 
   return (
     <Tilt className="hb-console-tilt">

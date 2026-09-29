@@ -615,3 +615,4 @@ html { scrollbar-color: var(--blue, #2f6bff) #0a0a0a; }
 }
 .hb-marquee:not(.rev) { position: relative; z-index: 2; }
 .hb-marquee.rev { position: relative; z-index: 1; }
+.hb-feed { height: 212px; overflow: hidden; }
